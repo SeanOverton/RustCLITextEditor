@@ -1,9 +1,17 @@
 use crate::Terminal;
 use termion::event::Key;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub struct Position {
+	pub x: usize,
+	pub y: usize,
+}
+
 pub struct Editor {
 	should_quit: bool,
-	terminal: Terminal
+	terminal: Terminal,
+	cursor_position: Position,
 }
 
 impl Editor {
@@ -25,19 +33,20 @@ impl Editor {
 		Self { 
 			should_quit: false,
 			terminal: Terminal::default().expect("Failed to initialize terminal"),
+			cursor_position: Position { x: 0, y: 0 },
 		}
 	}
 
 	fn refresh_screen(&self) -> Result<(), std::io::Error> {
 		Terminal::cursor_hide();
 		Terminal::clear_screen();
-		Terminal::cursor_position(0, 0);
+		Terminal::cursor_position(&Position { x: 0, y: 0 });
 		if self.should_quit {
 			Terminal::clear_screen();
 			println!("Goodbye.\r");
 		} else {
 			self.draw_rows();
-			Terminal::cursor_position(0, 0);
+			Terminal::cursor_position(&self.cursor_position);
 		}
 		
 		Terminal::cursor_show();
@@ -53,10 +62,27 @@ impl Editor {
 		Ok(())
 	}
 
+	fn draw_welcome_message(&self) {
+		// prints a centered welcome message          
+		let mut welcome_message = format!("Hecto editor -- version {}", VERSION);            
+		let width = self.terminal.size().width as usize;            
+		let len = welcome_message.len();            
+		let padding = width.saturating_sub(len) / 2;            
+		let spaces = " ".repeat(padding.saturating_sub(1));            
+		welcome_message = format!("~{}{}", spaces, welcome_message);            
+		welcome_message.truncate(width);            
+		println!("{}\r", welcome_message);            
+	}
+
 	fn draw_rows(&self) {
-		for _ in 0..self.terminal.size().height - 1 {
+		let height  = self.terminal.size().height;
+		for row in 0..height - 1 {
 			Terminal::clear_current_line();
-			println!("~\r");
+			if row == height / 3 {
+				self.draw_welcome_message();
+			} else {
+				println!("~\r");
+			}
 		}
 	}
 }
